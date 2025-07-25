@@ -1,4 +1,4 @@
-from app import db
+from extensions import db
 import datetime
 
 # User Model: Stores user data

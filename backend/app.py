@@ -1,19 +1,30 @@
+# In backend/app.py
+
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from extensions import db, jwt  # <-- Import from extensions
 
-app = Flask(__name__)
+def create_app():
+    app = Flask(__name__)
 
-# Configure the SQLite database.
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    # --- CONFIGURATIONS ---
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['JWT_SECRET_KEY'] = 'your-super-secret-key-change-this'
 
-# Initialize the database with the app
-db = SQLAlchemy(app)
+    # --- INITIALIZE EXTENSIONS WITH THE APP ---
+    db.init_app(app)
+    jwt.init_app(app)
 
+    # --- BLUEPRINT REGISTRATION ---
+    from routes.auth import auth_bp
+    app.register_blueprint(auth_bp, url_prefix='/auth')
 
-@app.route('/')
-def hello():
-    return "Hello, World!"
+    @app.route('/hello')
+    def hello():
+        return "Hello, World!"
+
+    return app
 
 if __name__ == '__main__':
+    app = create_app()
     app.run(debug=True)
