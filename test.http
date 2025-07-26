@@ -1,0 +1,16 @@
+### 1. Login as Admin to get a token
+POST http://127.0.0.1:5000/auth/login
+Content-Type: application/json
+
+{
+    "username": "admin",
+    "password": "admin-password123"
+}
+
+###
+### 2. Test the Admin Endpoint (Paste Token Below)
+GET http://127.0.0.1:5000/auth/admin/test
+Authorization: Bearer <eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc1MzQ2MjYzNSwianRpIjoiNTQ1NTA1YTgtYWNiMy00NmJkLThkYzItMDc0YjA1NDg2YzRiIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjEiLCJuYmYiOjE3NTM0NjI2MzUsImNzcmYiOiIxMGE4ZWRlMC1lMjliLTRlZjAtODUyOC0wYWJmYjM3YWU1NzkiLCJleHAiOjE3NTM0NjM1MzV9.UoMzaBpA2i3XhmLqGcnqfLVwkcFkDBUc3ujWkb8iW8c>
+
+### Run the Crypto Self-Test
+GET http://127.0.0.1:5000/auth/crypto-test

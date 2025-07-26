@@ -9,7 +9,11 @@ def create_app():
     # --- CONFIGURATIONS ---
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['JWT_SECRET_KEY'] = 'your-super-secret-key-change-this'
+    # Use a very simple key for debugging
+    app.config['JWT_SECRET_KEY'] = 'super' # <-- CHANGE THIS LINE
+
+    # Add a print statement to be sure
+    print(f"Using Secret Key: {app.config['JWT_SECRET_KEY']}")
 
     # --- INITIALIZE EXTENSIONS WITH THE APP ---
     db.init_app(app)
@@ -18,6 +22,10 @@ def create_app():
     # --- BLUEPRINT REGISTRATION ---
     from routes.auth import auth_bp
     app.register_blueprint(auth_bp, url_prefix='/auth')
+    from routes.lot_routes import lot_bp
+    app.register_blueprint(lot_bp, url_prefix='/api')
+    from routes.admin_routes import admin_bp
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
 
     @app.route('/hello')
     def hello():

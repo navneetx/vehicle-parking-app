@@ -3,6 +3,10 @@ from models import User
 from extensions import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token
+from flask_jwt_extended import jwt_required
+from decorators import admin_required
+from flask_jwt_extended import decode_token
+
 
 # Create a Blueprint to organize our routes
 auth_bp = Blueprint('auth_bp', __name__)
@@ -37,7 +41,35 @@ def login():
         return jsonify({"message": "Invalid credentials"}), 401 # Unauthorized
 
     # 3. Create a JWT access token if credentials are valid
-    access_token = create_access_token(identity=user.id)
+    access_token = create_access_token(identity=str(user.id))
     
     # 4. Return the token
     return jsonify(access_token=access_token)
+
+# --- NEW ADMIN-ONLY TEST ROUTE ---
+@auth_bp.route('/admin/test', methods=['GET'])
+@jwt_required()
+@admin_required()
+def admin_test():
+    return jsonify(message="Welcome, Admin!")
+
+# --- NEW DEBUG ROUTE ---
+@auth_bp.route('/crypto-test')
+def crypto_test():
+    try:
+        # 1. Create a token for the admin user (id=1)
+        test_token = create_access_token(identity=str(1))
+        print(f"\nGenerated Token: {test_token}\n")
+
+        # 2. Immediately try to decode it with the same configuration
+        decoded = decode_token(test_token)
+        print(f"Successfully Decoded: {decoded}\n")
+        
+        return jsonify(
+            message="Crypto self-test PASSED!",
+            token=test_token
+        ), 200
+    except Exception as e:
+        # If this fails, there's a deep issue with the crypto library
+        print(f"\nCrypto Test FAILED: {e}\n")
+        return jsonify(message=f"Crypto self-test FAILED: {str(e)}"), 500
