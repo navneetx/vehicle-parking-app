@@ -1,9 +1,11 @@
 # In backend/routes/admin_routes.py
 
 from flask import jsonify, Blueprint
+from extensions import db
 from models import User, ParkingRecord, ParkingSpot, ParkingLot
 from flask_jwt_extended import jwt_required
 from decorators import admin_required
+from sqlalchemy import func
 
 admin_bp = Blueprint('admin_bp', __name__)
 
@@ -48,3 +50,29 @@ def get_all_reservations():
         output.append(record_data)
     
     return jsonify({'reservations': output})
+
+@admin_bp.route('/revenue', methods=['GET'])
+@jwt_required()
+@admin_required()
+def get_revenue_summary():
+    """
+    Calculates the total revenue for each parking lot by joining the
+    ParkingLot, ParkingSpot, and ParkingRecord tables and summing the costs.
+    """
+    revenue_data = db.session.query(
+        ParkingLot.prime_location_name,
+        func.sum(ParkingRecord.parking_cost).label('total_revenue')
+    ).join(ParkingSpot, ParkingLot.id == ParkingSpot.lot_id)\
+     .join(ParkingRecord, ParkingSpot.id == ParkingRecord.spot_id)\
+     .filter(ParkingRecord.parking_cost.isnot(None))\
+     .group_by(ParkingLot.prime_location_name)\
+     .all()
+
+    output = []
+    for lot_name, total_revenue in revenue_data:
+        output.append({
+            'lot_name': lot_name,
+            'total_revenue': round(total_revenue, 2) if total_revenue else 0
+        })
+
+    return jsonify({'revenue_summary': output})
