@@ -1,16 +1,26 @@
-# In backend/routes/user_routes.py
-import datetime
 from flask import request, jsonify, Blueprint
 from models import ParkingLot, ParkingSpot, ParkingRecord, User
-from extensions import db
+from extensions import db, redis_client # Import redis_client
+import json # Import json for handling data
 from flask_jwt_extended import jwt_required, get_jwt_identity
+import datetime
 
 user_bp = Blueprint('user_bp', __name__)
 
 @user_bp.route('/lots', methods=['GET'])
 @jwt_required()
 def get_available_lots():
-    # This endpoint is for regular users to see all available lots.
+    cache_key = "all_lots"
+    # 1. First, try to get the data from the cache
+    cached_lots = redis_client.get(cache_key)
+
+    if cached_lots:
+        # If the data exists in the cache, return it immediately
+        print("Serving from cache") # For debugging
+        return jsonify({'lots': json.loads(cached_lots)})
+    
+    # 2. If data is not in the cache, query the database
+    print("Serving from database") # For debugging
     lots = ParkingLot.query.all()
     output = []
     for lot in lots:
@@ -24,6 +34,9 @@ def get_available_lots():
         }
         output.append(lot_data)
     
+    # 3. Store the fresh data in the cache for next time, with an expiry of 1 hour (3600 seconds)
+    redis_client.setex(cache_key, 3600, json.dumps(output))
+
     return jsonify({'lots': output})
 
 
@@ -75,6 +88,7 @@ def handle_reservations():
             output.append(record_data)
         
         return jsonify({'history': output})
+
 
 @user_bp.route('/reservations/active', methods=['PUT'])
 @jwt_required()
