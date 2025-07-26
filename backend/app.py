@@ -27,6 +27,9 @@ def create_app():
     from routes.admin_routes import admin_bp
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
 
+    from routes.user_routes import user_bp
+    app.register_blueprint(user_bp, url_prefix='/api/user')
+
     @app.route('/hello')
     def hello():
         return "Hello, World!"
