@@ -1,7 +1,7 @@
 # In backend/routes/admin_routes.py
 
 from flask import jsonify, Blueprint
-from models import User
+from models import User, ParkingRecord, ParkingSpot, ParkingLot
 from flask_jwt_extended import jwt_required
 from decorators import admin_required
 
@@ -24,3 +24,27 @@ def get_all_users():
         output.append(user_data)
 
     return jsonify({'users': output})
+
+# This is the new route for getting all reservations
+@admin_bp.route('/reservations', methods=['GET'])
+@jwt_required()
+@admin_required()
+def get_all_reservations():
+    reservations = ParkingRecord.query.order_by(ParkingRecord.parking_timestamp.desc()).all()
+    output = []
+    for record in reservations:
+        user = User.query.get(record.user_id)
+        spot = ParkingSpot.query.get(record.spot_id)
+        lot = ParkingLot.query.get(spot.lot_id)
+        record_data = {
+            'reservation_id': record.id,
+            'username': user.username,
+            'lot_name': lot.prime_location_name,
+            'spot_number': spot.spot_number,
+            'parking_time': record.parking_timestamp.isoformat() if record.parking_timestamp else None,
+            'leaving_time': record.leaving_timestamp.isoformat() if record.leaving_timestamp else None,
+            'cost': record.parking_cost
+        }
+        output.append(record_data)
+    
+    return jsonify({'reservations': output})
