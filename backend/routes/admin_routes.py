@@ -1,8 +1,6 @@
-# In backend/routes/admin_routes.py
-
 from flask import jsonify, Blueprint
-from extensions import db
 from models import User, ParkingRecord, ParkingSpot, ParkingLot
+from extensions import db, celery
 from flask_jwt_extended import jwt_required
 from decorators import admin_required
 from sqlalchemy import func
@@ -13,7 +11,6 @@ admin_bp = Blueprint('admin_bp', __name__)
 @jwt_required()
 @admin_required()
 def get_all_users():
-    # Query the database for all users
     users = User.query.all()
     output = []
     for user in users:
@@ -21,13 +18,11 @@ def get_all_users():
             'id': user.id,
             'username': user.username,
             'role': user.role
-            # IMPORTANT: We never include the user's password hash in an API response
         }
         output.append(user_data)
-
+    
     return jsonify({'users': output})
 
-# This is the new route for getting all reservations
 @admin_bp.route('/reservations', methods=['GET'])
 @jwt_required()
 @admin_required()
@@ -55,10 +50,6 @@ def get_all_reservations():
 @jwt_required()
 @admin_required()
 def get_revenue_summary():
-    """
-    Calculates the total revenue for each parking lot by joining the
-    ParkingLot, ParkingSpot, and ParkingRecord tables and summing the costs.
-    """
     revenue_data = db.session.query(
         ParkingLot.prime_location_name,
         func.sum(ParkingRecord.parking_cost).label('total_revenue')
@@ -67,12 +58,17 @@ def get_revenue_summary():
      .filter(ParkingRecord.parking_cost.isnot(None))\
      .group_by(ParkingLot.prime_location_name)\
      .all()
-
     output = []
     for lot_name, total_revenue in revenue_data:
         output.append({
             'lot_name': lot_name,
             'total_revenue': round(total_revenue, 2) if total_revenue else 0
         })
-
     return jsonify({'revenue_summary': output})
+
+# Temporary test route for Celery
+@admin_bp.route('/test-task', methods=['GET'])
+def test_task():
+    # Send the task by its string name
+    task = celery.send_task('tasks.add_together', args=[5, 10])
+    return jsonify({"message": "Task sent!", "task_id": task.id})
