@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Your Monthly Parking Report</title>
+    <style>
+        body { font-family: sans-serif; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h2>Hi {{ username }},</h2>
+    <p>Here is your parking summary for {{ reporting_period }}.</p>
+    <p><strong>Total Spent:</strong> ₹{{ "%.2f"|format(total_spent) }}</p>
+    <p><strong>Total Parkings:</strong> {{ total_parkings }}</p>
+    <hr>
+    <h3>Details:</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Lot Name</th>
+                <th>Parked On</th>
+                <th>Duration (Hours)</th>
+                <th>Cost (₹)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in records %}
+            <tr>
+                <td>{{ record.lot_name }}</td>
+                <td>{{ record.parking_time }}</td>
+                <td>{{ "%.2f"|format(record.duration_hours) }}</td>
+                <td>{{ "%.2f"|format(record.cost) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

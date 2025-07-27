@@ -2,13 +2,9 @@ from flask import request, jsonify, Blueprint
 from models import User
 from extensions import db
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_jwt_extended import create_access_token
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, decode_token
 from decorators import admin_required
-from flask_jwt_extended import decode_token
 
-
-# Create a Blueprint to organize our routes
 auth_bp = Blueprint('auth_bp', __name__)
 
 @auth_bp.route('/register', methods=['POST'])
@@ -25,43 +21,59 @@ def register():
 
     return jsonify({"message": "User registered successfully"}), 201
 
-# --- NEW LOGIN ROUTE ---
 @auth_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
 
-    # 1. Find the user by their username
+    # --- START DEBUGGING ---
+    print(f"\n--- LOGIN ATTEMPT ---")
+    print(f"Attempting login for username: '{username}'")
+
     user = User.query.filter_by(username=username).first()
 
-    # 2. Check if user exists and if the password is correct
-    # `check_password_hash` compares the provided password with the stored hash
-    if not user or not check_password_hash(user.password, password):
-        return jsonify({"message": "Invalid credentials"}), 401 # Unauthorized
+    if not user:
+        print("Result: User NOT FOUND in database.")
+        print("-----------------------\n")
+        return jsonify({"message": "Invalid credentials"}), 401
 
-    # 3. Create a JWT access token if credentials are valid
-    access_token = create_access_token(identity=str(user.id))
+    print(f"Result: User FOUND. User ID: {user.id}, Stored Hash: {user.password[:30]}...")
     
-    # 4. Return the token
+    password_is_correct = check_password_hash(user.password, password)
+    
+    if not password_is_correct:
+        print(f"Password Check Result: FAILED.")
+        print("-----------------------\n")
+        return jsonify({"message": "Invalid credentials"}), 401
+
+    print("Password Check Result: PASSED.")
+    access_token = create_access_token(identity=str(user.id))
+    print("Token created successfully.")
+    print("-----------------------\n")
+    
     return jsonify(access_token=access_token)
 
-# --- NEW ADMIN-ONLY TEST ROUTE ---
+@auth_bp.route('/profile', methods=['GET'])
+@jwt_required()
+def profile():
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    if user:
+        return jsonify(username=user.username, role=user.role)
+    return jsonify({"message": "User not found"}), 404
+
 @auth_bp.route('/admin/test', methods=['GET'])
 @jwt_required()
 @admin_required()
 def admin_test():
     return jsonify(message="Welcome, Admin!")
 
-# --- NEW DEBUG ROUTE ---
 @auth_bp.route('/crypto-test')
 def crypto_test():
     try:
-        # 1. Create a token for the admin user (id=1)
         test_token = create_access_token(identity=str(1))
         print(f"\nGenerated Token: {test_token}\n")
-
-        # 2. Immediately try to decode it with the same configuration
         decoded = decode_token(test_token)
         print(f"Successfully Decoded: {decoded}\n")
         
@@ -70,6 +82,5 @@ def crypto_test():
             token=test_token
         ), 200
     except Exception as e:
-        # If this fails, there's a deep issue with the crypto library
         print(f"\nCrypto Test FAILED: {e}\n")
         return jsonify(message=f"Crypto self-test FAILED: {str(e)}"), 500
