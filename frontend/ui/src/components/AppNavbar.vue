@@ -1,5 +1,6 @@
 <template>
-  <nav class="navbar" v-if="isLoggedIn">
+  <!-- This now checks our new 'showNavbar' logic -->
+  <nav class="navbar" v-if="showNavbar">
     <div>
       <span>Logged in as: <strong>{{ userRole }}</strong></span>
     </div>
@@ -10,12 +11,20 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue'; // <-- Import 'computed'
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const isLoggedIn = ref(!!localStorage.getItem('access_token'));
 const userRole = ref(localStorage.getItem('user_role') || '');
+
+// This is our new logic. It's a "computed property" that automatically
+// updates when other values (like the current route) change.
+const showNavbar = computed(() => {
+  const routeName = router.currentRoute.value.name;
+  // Only show the navbar if the user is logged in AND not on the Login or Register page.
+  return isLoggedIn.value && routeName !== 'Login' && routeName !== 'Register';
+});
 
 const logout = () => {
   localStorage.removeItem('access_token');
@@ -25,7 +34,7 @@ const logout = () => {
   router.push('/login');
 };
 
-// Watch for route changes to update the navbar's state
+// Watch for route changes to update the logged-in status
 watch(() => router.currentRoute.value, () => {
   isLoggedIn.value = !!localStorage.getItem('access_token');
   userRole.value = localStorage.getItem('user_role') || '';

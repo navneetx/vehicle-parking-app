@@ -1,17 +1,14 @@
 <template>
-  <div>
-    <h1>Welcome to Your Dashboard!</h1>
-    <button @click="logout">Logout</button>
-
-    <div class="nav-link">
-      <router-link to="/lots">View & Book Parking Lots</router-link>
+  <div class="dashboard-container">
+    <h1>Welcome to Your Dashboard</h1>
+    
+    <div class="actions-container">
+      <router-link to="/lots" class="action-button">View & Book Parking Lots</router-link>
+      <button @click="triggerExport" class="action-button">Export History to CSV</button>
     </div>
+    <p v-if="exportMessage" class="message">{{ exportMessage }}</p>
 
-    <div class="export-section">
-      <button @click="triggerExport">Export History to CSV</button>
-      <p v-if="exportMessage">{{ exportMessage }}</p>
-    </div>
-
+    <!-- This section only appears if there's an active reservation -->
     <div v-if="activeReservation" class="active-reservation">
       <h2>Current Parking Status</h2>
       <p>
@@ -20,13 +17,13 @@
       </p>
       <p>Parked at: {{ formatDateTime(activeReservation.parking_time) }}</p>
       <button @click="releaseSpot">Release My Spot</button>
-      <p v-if="releaseMessage">{{ releaseMessage }}</p>
+      <p v-if="releaseMessage" class="message">{{ releaseMessage }}</p>
     </div>
 
     <h2>Your Parking History</h2>
     <div v-if="loading">Loading history...</div>
     <div v-else-if="history.length === 0">No parking history found.</div>
-    <table v-else>
+    <table v-else class="history-table">
       <thead>
         <tr>
           <th>Lot Name</th>
@@ -55,6 +52,8 @@ import axios from 'axios';
 import { useRouter } from 'vue-router';
 import { formatInTimeZone } from 'date-fns-tz';
 
+// --- State Management ---
+// Reactive variables to hold the component's state.
 const history = ref([]);
 const activeReservation = ref(null);
 const loading = ref(true);
@@ -62,11 +61,15 @@ const releaseMessage = ref('');
 const exportMessage = ref('');
 const router = useRouter();
 
+// --- Helper Functions ---
+// A utility function to format UTC date strings into a readable local format.
 const formatDateTime = (isoString) => {
   if (!isoString) return '';
   return formatInTimeZone(new Date(isoString), 'Asia/Kolkata', 'dd/MM/yyyy, hh:mm:ss a');
 };
 
+// --- API Calls ---
+// Fetches the user's complete parking history from the backend.
 const fetchHistory = async () => {
   const token = localStorage.getItem('access_token');
   if (!token) {
@@ -80,6 +83,7 @@ const fetchHistory = async () => {
       headers: { Authorization: `Bearer ${token}` }
     });
     history.value = response.data.history;
+    // After fetching, check if any record is active (has no leaving_time).
     activeReservation.value = history.value.find(rec => rec.leaving_time === null) || null;
   } catch (error) {
     console.error('Failed to fetch history:', error);
@@ -88,14 +92,7 @@ const fetchHistory = async () => {
   }
 };
 
-onMounted(fetchHistory);
-
-const logout = () => {
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('user_role');
-  router.push('/login');
-};
-
+// Ends the user's active parking session.
 const releaseSpot = async () => {
   const token = localStorage.getItem('access_token');
   try {
@@ -103,13 +100,14 @@ const releaseSpot = async () => {
       headers: { Authorization: `Bearer ${token}` }
     });
     releaseMessage.value = response.data.message;
-    await fetchHistory();
+    await fetchHistory(); // Refresh the history to show the changes.
   } catch (error) {
     releaseMessage.value = error.response?.data?.message || 'Failed to release spot.';
     console.error('Failed to release spot:', error);
   }
 };
 
+// Triggers the background job to generate a CSV export.
 const triggerExport = async () => {
   const token = localStorage.getItem('access_token');
   try {
@@ -123,37 +121,59 @@ const triggerExport = async () => {
     console.error('Export failed:', error);
   }
 };
+
+// --- Lifecycle Hooks ---
+// The `onMounted` hook runs automatically as soon as the component is added to the page.
+onMounted(fetchHistory);
+
 </script>
 
 <style scoped>
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-  }
-  th, td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: left;
-  }
-  th {
-    background-color: #f2f2f2;
-  }
-  button, .nav-link {
-    margin-bottom: 20px;
-  }
-  .active-reservation {
-    border: 1px solid #4CAF50;
-    background-color: #f0fff0;
-    padding: 15px;
-    margin-bottom: 20px;
-    border-radius: 5px;
-  }
-  .export-section {
-    margin-top: 20px;
-    margin-bottom: 20px;
-    padding: 15px;
-    background-color: #e7f3fe;
-    border-left: 6px solid #2196F3;
-  }
+.dashboard-container {
+  max-width: 900px;
+  margin: 20px auto;
+  padding: 20px;
+}
+.actions-container {
+  display: flex;
+  gap: 15px;
+  margin: 20px 0;
+}
+.action-button {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  background-color: #007bff;
+  color: white;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 1em;
+}
+.action-button:hover {
+  background-color: #0056b3;
+}
+.message {
+  margin-top: 10px;
+  color: #0056b3;
+}
+.active-reservation {
+  border: 1px solid #28a745;
+  background-color: #d4edda;
+  padding: 15px;
+  margin: 20px 0;
+  border-radius: 5px;
+}
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+.history-table th, .history-table td {
+  border: 1px solid #ddd;
+  padding: 12px;
+  text-align: left;
+}
+.history-table th {
+  background-color: #f8f9fa;
+}
 </style>
